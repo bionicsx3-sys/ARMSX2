@@ -101,15 +101,17 @@ jobs:
       - name: Configure CMake for iOS
         run: |
           SDK_VAR="${{ steps.vars.outputs.sdk }}"
+          SYSROOT=$(xcrun --sdk "$SDK_VAR" --show-sdk-path)
           cmake -G Xcode \
             -B ios/build \
             -S ios \
             -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_SYSROOT=$(xcrun --sdk "$SDK_VAR" --show-sdk-path) \
+            -DCMAKE_OSX_SYSROOT="$SYSROOT" \
             -DCMAKE_OSX_ARCHITECTURES=${{ steps.vars.outputs.architecture }} \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
             -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=YES \
             -DCMAKE_XCODE_ATTRIBUTE_SDKROOT="$SDK_VAR" \
+            -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS="$SDK_VAR" \
             -DCMAKE_CONFIGURATION_TYPES=${{ steps.vars.outputs.configuration }} \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         timeout-minutes: 30
@@ -119,21 +121,13 @@ jobs:
           SDK="${{ steps.vars.outputs.sdk }}"
           CONFIG="${{ steps.vars.outputs.configuration }}"
           
-          case "$SDK" in
-            iphoneos)
-              DESTINATION="generic/platform=iOS"
-              ;;
-            iphonesimulator)
-              DESTINATION="generic/platform=iOS Simulator"
-              ;;
-          esac
-          
+          # The CMake project now has SUPPORTED_PLATFORMS set to the target SDK,
+          # so just using -sdk without -destination should resolve correctly.
           xcodebuild \
             -project ios/build/ARMSX2.xcodeproj \
             -scheme ARMSX2 \
             -configuration "$CONFIG" \
             -sdk "$SDK" \
-            -destination "$DESTINATION" \
             -derivedDataPath ios/build/DerivedData \
             -parallelizeTargets \
             build CODE_SIGNING_ALLOWED=NO
