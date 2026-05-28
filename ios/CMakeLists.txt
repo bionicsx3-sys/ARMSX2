@@ -111,6 +111,9 @@ find_library(COREGRAPHICS_LIB CoreGraphics)
 find_library(COREFOUNDATION_LIB CoreFoundation)
 find_library(QUARTZCORE_LIB QuartzCore)
 find_library(IOKIT_LIB IOKit)
+if(NOT IOKIT_LIB)
+    set(IOKIT_LIB "")
+endif()
 find_library(AUDIOTOOLBOX_LIB AudioToolbox)
 find_library(AVFAUDIO_LIB AVFAudio)
 find_library(GAMECONTROLLER_LIB GameController)
@@ -253,7 +256,7 @@ set(pcsx2_core_sources
     MTGS.cpp MTVU.cpp Patch.cpp Pcsx2Config.cpp PerformanceMetrics.cpp
     PrecompiledHeader.cpp R3000A.cpp R3000AInterpreter.cpp R3000AOpcodeTables.cpp
     R5900.cpp R5900OpcodeImpl.cpp R5900OpcodeTables.cpp
-    SaveState.cpp ShiftJisToUnicode.cpp Sif.cpp Sif0.cpp Sif1.cpp sif2.cpp
+    ShiftJisToUnicode.cpp Sif.cpp Sif0.cpp Sif1.cpp sif2.cpp
     SourceLog.cpp SPR.cpp StateWrapper.cpp
     Vif0_Dma.cpp Vif1_Dma.cpp Vif1_MFIFO.cpp Vif.cpp
     Vif_Codes.cpp Vif_Transfer.cpp Vif_Unpack.cpp
@@ -279,7 +282,7 @@ set(pcsx2_spu2_sources
 set(pcsx2_gs_sources
     GS/GS.cpp GS/GSCapture.cpp GS/GSClut.cpp GS/GSDrawingContext.cpp
     GS/GSDump.cpp GS/GSLocalMemory.cpp GS/GSLzma.cpp GS/GSPerfMon.cpp
-    GS/GSPng.cpp GS/GSRingHeap.cpp GS/GSState.cpp GS/GSTables.cpp
+    GS/GSRingHeap.cpp GS/GSState.cpp GS/GSTables.cpp
     GS/GSUtil.cpp GS/GSVector.cpp GS/MultiISA.cpp
     GS/Renderers/Common/GSDevice.cpp GS/Renderers/Common/GSDirtyRect.cpp
     GS/Renderers/Common/GSFunctionMap.cpp GS/Renderers/Common/GSGPUProfile.cpp
@@ -287,7 +290,7 @@ set(pcsx2_gs_sources
     GS/Renderers/Common/GSVertexTrace.cpp
     GS/Renderers/Null/GSRendererNull.cpp
     GS/Renderers/HW/GSHwHack.cpp GS/Renderers/HW/GSRendererHW.cpp
-    GS/Renderers/HW/GSTextureCache.cpp GS/Renderers/HW/GSTextureReplacementLoaders.cpp
+    GS/Renderers/HW/GSTextureCache.cpp
     GS/Renderers/HW/GSTextureReplacements.cpp
     GS/Renderers/SW/GSTextureCacheSW.cpp
     GS/Renderers/SW/GSDrawScanline.cpp GS/Renderers/SW/GSRasterizer.cpp GS/Renderers/SW/GSRendererSW.cpp
@@ -341,7 +344,7 @@ set(pcsx2_usb_sources
     USB/qemu-usb/bus.cpp USB/qemu-usb/core.cpp USB/qemu-usb/desc.cpp
     USB/qemu-usb/hid.cpp USB/qemu-usb/input-keymap-qcode-to-qnum.cpp USB/qemu-usb/usb-ohci.cpp
     USB/shared/ringbuffer.cpp
-    USB/usb-eyetoy/cam-jpeg.cpp USB/usb-eyetoy/jo_mpeg.cpp USB/usb-eyetoy/usb-eyetoy-webcam.cpp
+    USB/usb-eyetoy/jo_mpeg.cpp USB/usb-eyetoy/usb-eyetoy-webcam.cpp
     USB/usb-hid/usb-hid.cpp USB/usb-lightgun/guncon2.cpp
     USB/usb-mic/audiodev-cubeb.cpp USB/usb-mic/usb-headset.cpp USB/usb-mic/usb-mic.cpp
     USB/usb-msd/usb-msd.cpp
@@ -407,7 +410,7 @@ set(pcsx2_recording_sources
 )
 
 set(pcsx2_osx_sources
-    CDVD/Darwin/DriveUtility.cpp CDVD/Darwin/IOCtlSrc.cpp
+    # CDVD/Darwin/DriveUtility.cpp CDVD/Darwin/IOCtlSrc.cpp (IOKit is macOS only; iOS has no optical drives)
 )
 
 # Add all sources to PCSX2 target
