@@ -216,6 +216,13 @@ target_link_libraries(PCSX2_FLAGS INTERFACE
     vixl
     demanglegnu
     ccc
+    glslang
+    ZLIB::ZLIB
+    LZMA::LZMA
+    Zstd::Zstd
+    LZ4::LZ4
+    Freetype::Freetype
+    plutosvg::plutosvg
     ${UIKIT_LIB}
     ${METAL_LIB}
     ${METALKIT_LIB}
