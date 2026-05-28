@@ -98,6 +98,13 @@ jobs:
           echo "version=$(git describe --tags 2>/dev/null || echo 'dev')" >> $GITHUB_OUTPUT
           echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Install iOS Simulator runtime
+        run: |
+          # Download and install the iOS simulator runtime matching the Xcode SDK
+          xcodebuild -downloadPlatform iOS -quiet 2>&1 || true
+          xcrun simctl list runtimes 2>&1 || true
+        timeout-minutes: 15
+
       - name: Configure CMake for iOS
         run: |
           SDK_VAR="${{ steps.vars.outputs.sdk }}"
@@ -110,7 +117,6 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES=${{ steps.vars.outputs.architecture }} \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
             -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=YES \
-            -DCMAKE_XCODE_ATTRIBUTE_SDKROOT="$SDK_VAR" \
             -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS="$SDK_VAR" \
             -DCMAKE_CONFIGURATION_TYPES=${{ steps.vars.outputs.configuration }} \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -121,13 +127,21 @@ jobs:
           SDK="${{ steps.vars.outputs.sdk }}"
           CONFIG="${{ steps.vars.outputs.configuration }}"
           
-          # The CMake project now has SUPPORTED_PLATFORMS set to the target SDK,
-          # so just using -sdk without -destination should resolve correctly.
+          case "$SDK" in
+            iphoneos)
+              DESTINATION="generic/platform=iOS"
+              ;;
+            iphonesimulator)
+              DESTINATION="generic/platform=iOS Simulator"
+              ;;
+          esac
+          
           xcodebuild \
             -project ios/build/ARMSX2.xcodeproj \
             -scheme ARMSX2 \
             -configuration "$CONFIG" \
             -sdk "$SDK" \
+            -destination "$DESTINATION" \
             -derivedDataPath ios/build/DerivedData \
             -parallelizeTargets \
             build CODE_SIGNING_ALLOWED=NO
