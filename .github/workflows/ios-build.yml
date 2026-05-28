@@ -100,14 +100,16 @@ jobs:
 
       - name: Configure CMake for iOS
         run: |
+          SDK_VAR="${{ steps.vars.outputs.sdk }}"
           cmake -G Xcode \
             -B ios/build \
             -S ios \
             -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_SYSROOT=$(xcrun --sdk ${{ steps.vars.outputs.sdk }} --show-sdk-path) \
+            -DCMAKE_OSX_SYSROOT=$(xcrun --sdk "$SDK_VAR" --show-sdk-path) \
             -DCMAKE_OSX_ARCHITECTURES=${{ steps.vars.outputs.architecture }} \
             -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
             -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=YES \
+            -DCMAKE_XCODE_ATTRIBUTE_SDKROOT="$SDK_VAR" \
             -DCMAKE_CONFIGURATION_TYPES=${{ steps.vars.outputs.configuration }} \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         timeout-minutes: 30
@@ -117,22 +119,14 @@ jobs:
           SDK="${{ steps.vars.outputs.sdk }}"
           CONFIG="${{ steps.vars.outputs.configuration }}"
           
-          # Determine the latest available simulator runtime
-          if [ "$SDK" = "iphonesimulator" ]; then
-            LATEST_RUNTIME=$(xcrun simctl list runtimes 2>/dev/null | grep "^iOS" | tail -1 | grep -oE 'iOS [0-9.]+' | head -1 | cut -d' ' -f2)
-            echo "Latest iOS simulator runtime: $LATEST_RUNTIME"
-            if [ -n "$LATEST_RUNTIME" ]; then
-              # Use the specific OS version that matches an installed runtime
-              DESTINATION="platform=iOS Simulator,OS=${LATEST_RUNTIME}"
-            else
+          case "$SDK" in
+            iphoneos)
+              DESTINATION="generic/platform=iOS"
+              ;;
+            iphonesimulator)
               DESTINATION="generic/platform=iOS Simulator"
-            fi
-          else
-            DESTINATION="generic/platform=iOS"
-          fi
-          
-          echo "Destination: $DESTINATION"
-          echo "SDK: $SDK"
+              ;;
+          esac
           
           xcodebuild \
             -project ios/build/ARMSX2.xcodeproj \
