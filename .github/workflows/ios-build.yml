@@ -110,31 +110,28 @@ jobs:
             -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=YES \
             -DCMAKE_CONFIGURATION_TYPES=${{ steps.vars.outputs.configuration }} \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-        timeout-minutes: 15
+        timeout-minutes: 30
 
       - name: Build with xcodebuild
         run: |
           SDK="${{ steps.vars.outputs.sdk }}"
           CONFIG="${{ steps.vars.outputs.configuration }}"
           
-          # Check available SDKs
-          echo "Available SDKs:"
-          xcodebuild -showsdks 2>/dev/null || true
-          echo "---"
-          echo "Available destinations:"
-          xcodebuild -project ios/build/ARMSX2.xcodeproj -scheme ARMSX2 -showdestinations 2>/dev/null || true
-          echo "---"
-          
-          # Download missing simulator runtimes if needed
-          if [ "$SDK" = "iphonesimulator" ]; then
-            xcodebuild -downloadPlatform iOS -quiet 2>/dev/null || true
-          fi
+          case "$SDK" in
+            iphoneos)
+              DESTINATION="generic/platform=iOS"
+              ;;
+            iphonesimulator)
+              DESTINATION="generic/platform=iOS Simulator"
+              ;;
+          esac
           
           xcodebuild \
             -project ios/build/ARMSX2.xcodeproj \
             -scheme ARMSX2 \
             -configuration "$CONFIG" \
             -sdk "$SDK" \
+            -destination "$DESTINATION" \
             -derivedDataPath ios/build/DerivedData \
             -parallelizeTargets \
             build CODE_SIGNING_ALLOWED=NO
