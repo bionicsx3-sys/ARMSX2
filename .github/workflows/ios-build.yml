@@ -112,6 +112,16 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         timeout-minutes: 30
 
+      - name: Install iOS Simulator runtime
+        if: ${{ steps.vars.outputs.sdk == 'iphonesimulator' }}
+        run: |
+          # The GitHub Actions macOS runner may not have the simulator runtime pre-installed.
+          # xcodebuild -runFirstLaunch triggers first-launch setup including simulator downloads.
+          xcodebuild -runFirstLaunch 2>&1 || true
+          # List available runtimes after installation
+          xcrun simctl list runtimes 2>&1 || true
+        timeout-minutes: 10
+
       - name: Build with xcodebuild
         run: |
           SDK="${{ steps.vars.outputs.sdk }}"
