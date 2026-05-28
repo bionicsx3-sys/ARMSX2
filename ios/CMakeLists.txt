@@ -72,6 +72,37 @@ add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/SDL3" "${CMAKE_CURRENT_BINARY_DIR}/3
 # glslang (for SPIRV cross)
 add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/glslang" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/glslang" EXCLUDE_FROM_ALL)
 
+# zlib (ZLIB::ZLIB) - needed by libchdr
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/zlib" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/zlib" EXCLUDE_FROM_ALL)
+
+# zstd (Zstd::Zstd) - needed by libzip
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/zstd" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/zstd" EXCLUDE_FROM_ALL)
+
+# lz4
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/lz4" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/lz4" EXCLUDE_FROM_ALL)
+
+# harfbuzz + freetype - needed by imgui
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/harfbuzz" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/harfbuzz" EXCLUDE_FROM_ALL)
+set(FT_DISABLE_HARFBUZZ OFF CACHE BOOL "")
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/freetype" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/freetype" EXCLUDE_FROM_ALL)
+
+# libwebp
+set(WEBP_BUILD_ANIM_UTILS OFF CACHE BOOL "")
+set(WEBP_BUILD_CWEBP OFF CACHE BOOL "")
+set(WEBP_BUILD_DWEBP OFF CACHE BOOL "")
+set(WEBP_BUILD_GIF2WEBP OFF CACHE BOOL "")
+set(WEBP_BUILD_IMG2WEBP OFF CACHE BOOL "")
+set(WEBP_BUILD_VWEBP OFF CACHE BOOL "")
+set(WEBP_BUILD_WEBPINFO OFF CACHE BOOL "")
+set(WEBP_BUILD_EXTRAS OFF CACHE BOOL "")
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/libwebp" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/libwebp" EXCLUDE_FROM_ALL)
+
+# plutosvg1 - vector SVG rendering, needed by imgui
+set(plutovg_BUILD_EXAMPLES OFF CACHE BOOL "")
+add_subdirectory("${PCSX2_CPP_DIR}/3rdparty/plutosvg1" "${CMAKE_CURRENT_BINARY_DIR}/3rdparty/plutosvg1" EXCLUDE_FROM_ALL)
+
+
+
 # iOS system frameworks
 find_library(UIKIT_LIB UIKit)
 find_library(METAL_LIB Metal)
@@ -102,7 +133,6 @@ target_sources(common PRIVATE
     "${PCSX2_CPP_DIR}/common/FastJmp.cpp"
     "${PCSX2_CPP_DIR}/common/FileSystem.cpp"
     "${PCSX2_CPP_DIR}/common/HostSys.cpp"
-    "${PCSX2_CPP_DIR}/common/Image.cpp"
     "${PCSX2_CPP_DIR}/common/HTTPDownloader.cpp"
     "${PCSX2_CPP_DIR}/common/MemorySettingsInterface.cpp"
     "${PCSX2_CPP_DIR}/common/MD5Digest.cpp"
@@ -113,7 +143,6 @@ target_sources(common PRIVATE
     "${PCSX2_CPP_DIR}/common/SettingsWrapper.cpp"
     "${PCSX2_CPP_DIR}/common/SmallString.cpp"
     "${PCSX2_CPP_DIR}/common/StringUtil.cpp"
-    "${PCSX2_CPP_DIR}/common/TextureDecompress.cpp"
     "${PCSX2_CPP_DIR}/common/Timer.cpp"
     "${PCSX2_CPP_DIR}/common/WAVWriter.cpp"
     "${PCSX2_CPP_DIR}/common/WindowInfo.cpp"
