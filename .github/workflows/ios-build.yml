@@ -1,0 +1,202 @@
+name: iOS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: 'iOS SDK (iphoneos or iphonesimulator)'
+        required: true
+        default: 'iphonesimulator'
+        type: choice
+        options:
+          - iphonesimulator
+          - iphoneos
+      configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Debug
+          - Release
+      architecture:
+        description: 'Architecture'
+        required: true
+        default: 'arm64'
+        type: choice
+        options:
+          - arm64
+
+  push:
+    branches:
+      - master
+      - develop
+    paths:
+      - 'ios/**'
+      - 'app/src/main/cpp/**'
+      - '.github/workflows/ios-build.yml'
+
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'ios/**'
+      - 'app/src/main/cpp/**'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build:
+    name: Build ARMSX2 for iOS
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        sdk: [iphonesimulator]
+        configuration: [Debug]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set Xcode version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.2'
+
+      - name: Determine iOS SDK and Architecture
+        id: vars
+        run: |
+          SDK="${{ github.event_name == 'workflow_dispatch' && inputs.sdk || matrix.sdk }}"
+          CONFIG="${{ github.event_name == 'workflow_dispatch' && inputs.configuration || matrix.configuration }}"
+          ARCH="${{ github.event_name == 'workflow_dispatch' && inputs.architecture || 'arm64' }}"
+          echo "sdk=$SDK" >> $GITHUB_OUTPUT
+          echo "configuration=$CONFIG" >> $GITHUB_OUTPUT
+          echo "architecture=$ARCH" >> $GITHUB_OUTPUT
+          echo "Building for SDK=$SDK, Config=$CONFIG, Arch=$ARCH"
+
+      - name: Setup C++ libraries via Homebrew
+        run: |
+          brew list cmake 2>/dev/null || brew install cmake
+          brew list coreutils 2>/dev/null || brew install coreutils
+        timeout-minutes: 10
+
+      - name: Copy PCSX2 C++ sources to ios/cpp
+        run: |
+          mkdir -p ios/cpp
+          cp -a app/src/main/cpp/. ios/cpp/
+          echo "C++ sources copied to ios/cpp/"
+          echo "Total size:"
+          du -sh ios/cpp/
+
+      - name: Generate Git version info
+        id: git_vars
+        run: |
+          echo "version=$(git describe --tags 2>/dev/null || echo 'dev')" >> $GITHUB_OUTPUT
+          echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Configure CMake for iOS
+        run: |
+          cmake -G Xcode \
+            -B ios/build \
+            -S ios \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=$(xcrun --sdk ${{ steps.vars.outputs.sdk }} --show-sdk-path) \
+            -DCMAKE_OSX_ARCHITECTURES=${{ steps.vars.outputs.architecture }} \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
+            -DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=YES \
+            -DCMAKE_CONFIGURATION_TYPES=${{ steps.vars.outputs.configuration }}
+        timeout-minutes: 15
+
+      - name: Build with xcodebuild
+        run: |
+          SDK="${{ steps.vars.outputs.sdk }}"
+          CONFIG="${{ steps.vars.outputs.configuration }}"
+          
+          case "$SDK" in
+            iphoneos)
+              DESTINATION="generic/platform=iOS"
+              ;;
+            iphonesimulator)
+              DESTINATION="generic/platform=iOS Simulator"
+              ;;
+          esac
+          
+          xcodebuild \
+            -project ios/build/ARMSX2.xcodeproj \
+            -scheme ARMSX2 \
+            -configuration "$CONFIG" \
+            -sdk "$SDK" \
+            -destination "$DESTINATION" \
+            -derivedDataPath ios/build/DerivedData \
+            -parallelizeTargets \
+            build CODE_SIGNING_ALLOWED=NO
+        timeout-minutes: 60
+
+      - name: Package build artifacts
+        id: package
+        run: |
+          SDK="${{ steps.vars.outputs.sdk }}"
+          CONFIG="${{ steps.vars.outputs.configuration }}"
+          ARCH="${{ steps.vars.outputs.architecture }}"
+          VERSION="${{ steps.git_vars.outputs.version }}"
+          HASH="${{ steps.git_vars.outputs.hash }}"
+          
+          APP_DIR="ios/build/DerivedData/Build/Products/${CONFIG}-${SDK}"
+          APP_BUNDLE="$APP_DIR/ARMSX2.app"
+          
+          if [ ! -d "$APP_BUNDLE" ]; then
+            echo "Error: .app bundle not found at $APP_BUNDLE"
+            ls -la "$APP_DIR/" 2>/dev/null || echo "No such directory"
+            exit 1
+          fi
+          
+          echo "Found .app bundle at: $APP_BUNDLE"
+          echo "Contents:"
+          ls -la "$APP_BUNDLE"
+          
+          # Create output directory
+          mkdir -p ios/out
+          
+          # If building for device (iphoneos), create .ipa
+          if [ "$SDK" = "iphoneos" ]; then
+            PAYLOAD_DIR="ios/out/Payload"
+            mkdir -p "$PAYLOAD_DIR"
+            cp -a "$APP_BUNDLE" "$PAYLOAD_DIR/"
+            IPA_NAME="ARMSX2-${VERSION}-${HASH}-${CONFIG}.ipa"
+            cd ios/out && zip -r "../${IPA_NAME}" Payload/ && cd ../..
+            echo "artifact_path=ios/${IPA_NAME}" >> $GITHUB_OUTPUT
+            echo "artifact_name=${IPA_NAME}" >> $GITHUB_OUTPUT
+          else
+            # Simulator build - package .app as zip
+            ZIP_NAME="ARMSX2-${VERSION}-${HASH}-${CONFIG}-simulator.zip"
+            cd ios && zip -r "out/${ZIP_NAME}" "$APP_BUNDLE" && cd ..
+            echo "artifact_path=ios/out/${ZIP_NAME}" >> $GITHUB_OUTPUT
+            echo "artifact_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Packaged artifact: ${{ steps.package.outputs.artifact_path }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: ${{ steps.package.outputs.artifact_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summary
+        run: |
+          echo "## ARMSX2 iOS Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| SDK | ${{ steps.vars.outputs.sdk }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Configuration | ${{ steps.vars.outputs.configuration }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Architecture | ${{ steps.vars.outputs.architecture }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.git_vars.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ steps.git_vars.outputs.hash }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | ${{ steps.package.outputs.artifact_name }} |" >> $GITHUB_STEP_SUMMARY
