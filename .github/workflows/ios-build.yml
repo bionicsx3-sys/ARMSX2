@@ -112,29 +112,27 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
         timeout-minutes: 30
 
-      - name: Install iOS Simulator runtime
-        if: ${{ steps.vars.outputs.sdk == 'iphonesimulator' }}
-        run: |
-          # The GitHub Actions macOS runner may not have the simulator runtime pre-installed.
-          # xcodebuild -runFirstLaunch triggers first-launch setup including simulator downloads.
-          xcodebuild -runFirstLaunch 2>&1 || true
-          # List available runtimes after installation
-          xcrun simctl list runtimes 2>&1 || true
-        timeout-minutes: 10
-
       - name: Build with xcodebuild
         run: |
           SDK="${{ steps.vars.outputs.sdk }}"
           CONFIG="${{ steps.vars.outputs.configuration }}"
           
-          case "$SDK" in
-            iphoneos)
-              DESTINATION="generic/platform=iOS"
-              ;;
-            iphonesimulator)
+          # Determine the latest available simulator runtime
+          if [ "$SDK" = "iphonesimulator" ]; then
+            LATEST_RUNTIME=$(xcrun simctl list runtimes 2>/dev/null | grep "^iOS" | tail -1 | grep -oE 'iOS [0-9.]+' | head -1 | cut -d' ' -f2)
+            echo "Latest iOS simulator runtime: $LATEST_RUNTIME"
+            if [ -n "$LATEST_RUNTIME" ]; then
+              # Use the specific OS version that matches an installed runtime
+              DESTINATION="platform=iOS Simulator,OS=${LATEST_RUNTIME}"
+            else
               DESTINATION="generic/platform=iOS Simulator"
-              ;;
-          esac
+            fi
+          else
+            DESTINATION="generic/platform=iOS"
+          fi
+          
+          echo "Destination: $DESTINATION"
+          echo "SDK: $SDK"
           
           xcodebuild \
             -project ios/build/ARMSX2.xcodeproj \
