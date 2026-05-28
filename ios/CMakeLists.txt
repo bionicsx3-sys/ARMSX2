@@ -149,7 +149,7 @@ target_sources(common PRIVATE
     "${PCSX2_CPP_DIR}/common/Timer.cpp"
     "${PCSX2_CPP_DIR}/common/WAVWriter.cpp"
     "${PCSX2_CPP_DIR}/common/WindowInfo.cpp"
-    "${PCSX2_CPP_DIR}/common/CocoaTools.mm"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ARMSX2/CocoaTools_iOS.mm"
 )
 
 target_sources(common PRIVATE
@@ -182,10 +182,13 @@ add_library(PCSX2_FLAGS INTERFACE)
 
 target_compile_features(PCSX2_FLAGS INTERFACE cxx_std_20)
 target_compile_definitions(PCSX2_FLAGS INTERFACE
-    _M_ARM64=1
-    __POSIX__
+    s_vendorName="ARMSX2"
+    s_productName="ARMSX2"
     PCSX2_CORE=1
-    DISABLE_RECORDING
+)
+
+target_compile_options(PCSX2_FLAGS INTERFACE
+    "-include" "${CMAKE_CURRENT_SOURCE_DIR}/ARMSX2/PlatformFix.h"
 )
 
 target_include_directories(PCSX2_FLAGS INTERFACE
